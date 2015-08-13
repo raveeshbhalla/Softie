@@ -1,9 +1,10 @@
 package in.raveesh.softiedemo;
 
 import android.app.Service;
+import android.graphics.Rect;
+import android.os.Bundle;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
-import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
@@ -35,6 +36,11 @@ public class MainActivity extends AppCompatActivity {
                             }
                         }).show();
 
+                Rect r = new Rect();
+                View rootview = MainActivity.this.getWindow().getDecorView(); // this = activity
+                rootview.getWindowVisibleDisplayFrame(r);
+                Log.d(TAG, "Height: " + (r.bottom - r.top));
+
             }
 
             @Override
@@ -47,8 +53,12 @@ public class MainActivity extends AppCompatActivity {
                                 softie.hide();
                             }
                         }).show();
+
+                Rect r = new Rect();
+                View rootview = MainActivity.this.getWindow().getDecorView(); // this = activity
+                rootview.getWindowVisibleDisplayFrame(r);
+                Log.d(TAG, "Height: " + (r.bottom - r.top));
             }
         });
-
     }
 }
