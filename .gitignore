@@ -11,3 +11,10 @@ gradlew.bat
 local.properties
 Softie.iml
 .idea/
+.idea
+app/build
+app/app.iml
+build
+gradle
+softie/build
+softie/softie.iml
