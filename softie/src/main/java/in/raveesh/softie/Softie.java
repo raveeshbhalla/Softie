@@ -2,248 +2,75 @@ package in.raveesh.softie;
 
 import android.app.Activity;
 import android.content.SharedPreferences;
-import android.graphics.Rect;
-import android.os.Handler;
-import android.os.Message;
 import android.view.View;
-import android.view.ViewGroup;
-import android.view.inputmethod.InputMethodManager;
-import android.widget.EditText;
+import android.view.ViewTreeObserver;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
-
-/*
- * Author: Felipe Herranz (felhr85@gmail.com)
- * Contributors:Francesco Verheye (verheye.francesco@gmail.com)
- * 		Israel Dominguez (dominguez.israel@gmail.com)
- */
-
-public class Softie implements View.OnFocusChangeListener {
-    private static final int CLEAR_FOCUS = 0;
+public class Softie{
     private static final String TAG = "Softie";
 
-    private ViewGroup layout;
-    private int layoutBottom;
-    private InputMethodManager im;
-    private int[] coords;
-    private boolean isKeyboardShow;
-    private SoftKeyboardChangesThread softKeyboardThread;
-    private List<EditText> editTextList;
-
-    private View tempView; // reference to a focused EditText
-
-    public Softie(ViewGroup layout, InputMethodManager im) {
-        this.layout = layout;
-        initEditTexts(layout);
-        this.im = im;
-        this.coords = new int[2];
-        this.isKeyboardShow = false;
-        this.softKeyboardThread = new SoftKeyboardChangesThread();
-        this.softKeyboardThread.start();
-    }
-
-    public void show() {
-        if (!isKeyboardShow) {
-            layoutBottom = getLayoutCoordinates();
-            im.toggleSoftInput(0, InputMethodManager.SHOW_IMPLICIT);
-            softKeyboardThread.keyboardOpened();
-            isKeyboardShow = true;
-        }
-    }
-
-    public void hide() {
-        if (isKeyboardShow) {
-            im.toggleSoftInput(InputMethodManager.HIDE_IMPLICIT_ONLY, 0);
-            isKeyboardShow = false;
-        }
-    }
-
-    public void setSoftKeyboardCallback(SoftKeyboardChanged mCallback) {
-        softKeyboardThread.setCallback(mCallback);
-    }
-
-    public void unRegisterSoftKeyboardCallback() {
-        softKeyboardThread.stopThread();
-    }
-
-    public interface SoftKeyboardChanged {
-        public void onSoftKeyboardHide();
-
-        public void onSoftKeyboardShow();
-    }
-
-    private int getLayoutCoordinates() {
-        layout.getLocationOnScreen(coords);
-        return coords[1] + layout.getHeight();
-    }
-
-    private void hideByDefault() {
-        layout.setFocusable(true);
-        layout.setFocusableInTouchMode(true);
-    }
-
-    /*
-     * InitEditTexts now handles EditTexts in nested views
-     * Thanks to Francesco Verheye (verheye.francesco@gmail.com)
-     */
-    private void initEditTexts(ViewGroup viewgroup) {
-        if (editTextList == null)
-            editTextList = new ArrayList<EditText>();
-
-        int childCount = viewgroup.getChildCount();
-        for (int i = 0; i <= childCount - 1; i++) {
-            View v = viewgroup.getChildAt(i);
-
-            if (v instanceof ViewGroup) {
-                initEditTexts((ViewGroup) v);
-            }
-
-            if (v instanceof EditText) {
-                EditText editText = (EditText) v;
-                editText.setOnFocusChangeListener(this);
-                editText.setCursorVisible(true);
-                editTextList.add(editText);
-            }
-        }
-    }
-
-    /*
-     * OnFocusChange does update tempView correctly now when keyboard is still shown
-     * Thanks to Israel Dominguez (dominguez.israel@gmail.com)
-     */
-    @Override
-    public void onFocusChange(View v, boolean hasFocus) {
-        if (hasFocus) {
-            tempView = v;
-            if (!isKeyboardShow) {
-                layoutBottom = getLayoutCoordinates();
-                softKeyboardThread.keyboardOpened();
-                isKeyboardShow = true;
-            }
-        }
-    }
-
-    // This handler will clear focus of selected EditText
-    private final Handler mHandler = new Handler() {
-        @Override
-        public void handleMessage(Message m) {
-            switch (m.what) {
-                case CLEAR_FOCUS:
-                    if (tempView != null) {
-                        tempView.clearFocus();
-                        tempView = null;
-                    }
-                    break;
-            }
-        }
-    };
-
-    private class SoftKeyboardChangesThread extends Thread {
-        private AtomicBoolean started;
-        private SoftKeyboardChanged mCallback;
-
-        public SoftKeyboardChangesThread() {
-            started = new AtomicBoolean(true);
-        }
-
-        public void setCallback(SoftKeyboardChanged mCallback) {
-            this.mCallback = mCallback;
-        }
-
-        @Override
-        public void run() {
-            while (started.get()) {
-                // Wait until keyboard is requested to open
-                synchronized (this) {
-                    try {
-                        wait();
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
-                }
-
-                int currentBottomLocation = getLayoutCoordinates();
-
-                // There is some lag between open soft-keyboard function and when it really appears.
-                while (currentBottomLocation == layoutBottom && started.get()) {
-                    currentBottomLocation = getLayoutCoordinates();
-                }
-
-                if (started.get()) {
-                    mCallback.onSoftKeyboardShow();
-                    if (mHeightCheckActivity != null && mSoftieHeightListener != null) {
-                        Rect r = new Rect();
-                        View rootview = mHeightCheckActivity.getWindow().getDecorView(); // this = activity
-                        rootview.getWindowVisibleDisplayFrame(r);
-                        int height = r.bottom - r.top;
-                        if (height != mKeyboardHeightPreferences.getInt("height", 0)){
-                            mSoftieHeightListener.heightChanged(height);
-                            mKeyboardHeightPreferences.edit().putInt("height", height).apply();
-                        }
-                    }
-                }
-
-                // When keyboard is opened from EditText, initial bottom location is greater than layoutBottom
-                // and at some moment equals layoutBottom.
-                // That broke the previous logic, so I added this new loop to handle this.
-                while (currentBottomLocation >= layoutBottom && started.get()) {
-                    currentBottomLocation = getLayoutCoordinates();
-                }
-
-                // Now Keyboard is shown, keep checking layout dimensions until keyboard is gone
-                while (currentBottomLocation != layoutBottom && started.get()) {
-                    synchronized (this) {
-                        try {
-                            wait(500);
-                        } catch (InterruptedException e) {
-                            // TODO Auto-generated catch block
-                            e.printStackTrace();
-                        }
-                    }
-                    currentBottomLocation = getLayoutCoordinates();
-                }
-
-                if (started.get())
-                    mCallback.onSoftKeyboardHide();
-
-                // if keyboard has been opened clicking and EditText.
-                if (isKeyboardShow && started.get())
-                    isKeyboardShow = false;
-
-                // if an EditText is focused, remove its focus (on UI thread)
-                if (started.get())
-                    mHandler.obtainMessage(CLEAR_FOCUS).sendToTarget();
-            }
-        }
-
-        public void keyboardOpened() {
-            synchronized (this) {
-                notify();
-            }
-        }
-
-        public void stopThread() {
-            synchronized (this) {
-                started.set(false);
-                notify();
-            }
-        }
-    }
-
-    public interface SoftieHeightListener{
-        public void heightChanged(int height);
-    }
-
-    private SoftieHeightListener mSoftieHeightListener;
-    private Activity mHeightCheckActivity;
+    private HeightChangeListener mSoftieHeightListener;
+    private Activity activity;
     private SharedPreferences mKeyboardHeightPreferences;
 
-    public void setHeightObtainedListener(Activity activity, SoftieHeightListener listener){
+    public static Softie attach(Activity activity){
+        return new Softie(activity);
+    }
+
+    private Softie(Activity activity) {
+        this.activity = activity;
+        final View contentView = activity.findViewById(android.R.id.content);
+        contentView.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
+            private int mPreviousHeight;
+            @Override
+            public void onGlobalLayout() {
+                int newHeight = contentView.getHeight();
+                if (mPreviousHeight != 0) {
+                    if (mPreviousHeight > newHeight) {
+                        if (keyboardShownListener != null){
+                            keyboardShownListener.shown();
+                        }
+                        if (mSoftieHeightListener != null) {
+                            int keyboardHeight = mPreviousHeight - newHeight;
+                            int storedKeyboardHeight = mKeyboardHeightPreferences.getInt("height", 0);
+                            if (keyboardHeight != storedKeyboardHeight) {
+                                mSoftieHeightListener.heightChanged(keyboardHeight);
+                                mKeyboardHeightPreferences.edit().putInt("height", keyboardHeight).apply();
+                            }
+                        }
+
+                    } else if (mPreviousHeight < newHeight) {
+                        if (keyboardShownListener != null){
+                            keyboardShownListener.hidden();
+                        }
+                    } else {
+                        // No change
+                    }
+                }
+                mPreviousHeight = newHeight;
+            }
+        });
+    }
+
+    KeyboardShownListener keyboardShownListener;
+
+    public Softie setKeyboardShownListener(KeyboardShownListener listener){
+        keyboardShownListener = listener;
+        return this;
+    }
+
+    public interface KeyboardShownListener{
+        void shown();
+        void hidden();
+    }
+
+    public interface HeightChangeListener {
+        void heightChanged(int height);
+    }
+
+    public Softie setHeightChangeListener(HeightChangeListener listener){
         mSoftieHeightListener = listener;
-        mHeightCheckActivity = mHeightCheckActivity;
         mKeyboardHeightPreferences = activity.getSharedPreferences("softie", activity.MODE_PRIVATE);
+        return this;
     }
 
 }
