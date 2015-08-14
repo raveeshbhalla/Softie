@@ -1,10 +1,10 @@
 package in.raveesh.softie;
 
 import android.app.Activity;
+import android.content.SharedPreferences;
 import android.graphics.Rect;
 import android.os.Handler;
 import android.os.Message;
-import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.InputMethodManager;
@@ -43,7 +43,6 @@ public class Softie implements View.OnFocusChangeListener {
         this.softKeyboardThread = new SoftKeyboardChangesThread();
         this.softKeyboardThread.start();
     }
-
 
     public void show() {
         if (!isKeyboardShow) {
@@ -174,6 +173,16 @@ public class Softie implements View.OnFocusChangeListener {
 
                 if (started.get()) {
                     mCallback.onSoftKeyboardShow();
+                    if (mHeightCheckActivity != null && mSoftieHeightListener != null) {
+                        Rect r = new Rect();
+                        View rootview = mHeightCheckActivity.getWindow().getDecorView(); // this = activity
+                        rootview.getWindowVisibleDisplayFrame(r);
+                        int height = r.bottom - r.top;
+                        if (height != mKeyboardHeightPreferences.getInt("height", 0)){
+                            mSoftieHeightListener.heightChanged(height);
+                            mKeyboardHeightPreferences.edit().putInt("height", height).apply();
+                        }
+                    }
                 }
 
                 // When keyboard is opened from EditText, initial bottom location is greater than layoutBottom
@@ -221,6 +230,20 @@ public class Softie implements View.OnFocusChangeListener {
                 notify();
             }
         }
-
     }
+
+    public interface SoftieHeightListener{
+        public void heightChanged(int height);
+    }
+
+    private SoftieHeightListener mSoftieHeightListener;
+    private Activity mHeightCheckActivity;
+    private SharedPreferences mKeyboardHeightPreferences;
+
+    public void setHeightObtainedListener(Activity activity, SoftieHeightListener listener){
+        mSoftieHeightListener = listener;
+        mHeightCheckActivity = mHeightCheckActivity;
+        mKeyboardHeightPreferences = activity.getSharedPreferences("softie", activity.MODE_PRIVATE);
+    }
+
 }

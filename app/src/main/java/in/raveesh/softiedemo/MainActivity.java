@@ -36,11 +36,6 @@ public class MainActivity extends AppCompatActivity {
                             }
                         }).show();
 
-                Rect r = new Rect();
-                View rootview = MainActivity.this.getWindow().getDecorView(); // this = activity
-                rootview.getWindowVisibleDisplayFrame(r);
-                Log.d(TAG, "Height: " + (r.bottom - r.top));
-
             }
 
             @Override
@@ -53,11 +48,13 @@ public class MainActivity extends AppCompatActivity {
                                 softie.hide();
                             }
                         }).show();
+            }
+        });
 
-                Rect r = new Rect();
-                View rootview = MainActivity.this.getWindow().getDecorView(); // this = activity
-                rootview.getWindowVisibleDisplayFrame(r);
-                Log.d(TAG, "Height: " + (r.bottom - r.top));
+        softie.setHeightObtainedListener(this, new Softie.SoftieHeightListener() {
+            @Override
+            public void heightChanged(int height) {
+                Log.d(TAG, "Height obtained: "+height);
             }
         });
     }
