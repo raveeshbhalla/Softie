@@ -9,6 +9,17 @@
     android:paddingTop="@dimen/activity_vertical_margin"
     tools:context=".MainActivity">
 
+    <TextView
+        android:id="@+id/keyboardState"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        tools:text="Keyboard shown"/>
+    <TextView
+        android:id="@+id/keyboardHeight"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/keyboardState"
+        tools:text="Keyboard Height:0px"/>
     <EditText
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
