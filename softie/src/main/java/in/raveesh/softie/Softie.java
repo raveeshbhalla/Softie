@@ -70,6 +70,11 @@ public class Softie{
         return this;
     }
 
+    /**
+     * Returns the height of the software keyboard
+     * @param activity Activity in which we're looking
+     * @return Height of keyboard (in px) or -1, if not already available
+     */
     public static int getHeight(Activity activity){
         if (sharedPreferences == null){
             sharedPreferences = activity.getSharedPreferences("softie", activity.MODE_PRIVATE);
